@@ -77,5 +77,4 @@ class TeamMemberRepository:
                 TeamMember.team_id == team_id
             )
         ).all()
-        print(users)
         return users

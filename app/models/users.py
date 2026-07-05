@@ -17,4 +17,4 @@ class User(CommonBaseModel, Base):
     team_memberships = relationship("TeamMember", back_populates="user")
 
     created_tasks = relationship("Task", foreign_keys="Task.created_by", back_populates="creator")
-    assigned_tasks = relationship("Task", foreign_keys="Task.current_user_id", back_populates="assignee")
+    assigned_tasks = relationship("Task", foreign_keys="Task.assigned_user_id", back_populates="assignee")

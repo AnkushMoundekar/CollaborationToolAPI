@@ -26,8 +26,8 @@ class Task(CommonBaseModel, Base):
     status = Column(ChoiceEnum(TaskStatus, name="task_status"), nullable=False, default=TaskStatus.TODO)
     priority = Column(ChoiceEnum(TaskPriority, name="task_priority"), nullable=False, default= TaskPriority.MEDIUM)
 
-    current_team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True)
-    current_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    assigned_team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True)
+    assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
@@ -36,4 +36,4 @@ class Task(CommonBaseModel, Base):
     organization = relationship("Organization", back_populates="tasks")
     team = relationship("Team", back_populates="tasks")
     creator = relationship("User", foreign_keys=[created_by], back_populates="created_tasks")
-    assignee = relationship("User", foreign_keys=[current_user_id], back_populates="assigned_tasks")
+    assignee = relationship("User", foreign_keys=[assigned_user_id], back_populates="assigned_tasks")
