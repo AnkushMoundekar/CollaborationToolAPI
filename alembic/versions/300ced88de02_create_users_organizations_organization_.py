@@ -43,7 +43,7 @@ def upgrade() -> None:
     op.create_table('organization_members',
     sa.Column('org_id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
-    sa.Column('role', sa.Enum('owner', 'admin', 'member', name='organizationrole'), nullable=False),
+    sa.Column('role', sa.Enum('OWNER', 'ADMIN', 'MEMBER', name='organizationrole'), nullable=False),
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),

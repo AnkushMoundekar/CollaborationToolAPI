@@ -13,7 +13,7 @@ from app.modules.users.repository import UserRepository
 
 router = APIRouter(tags=["Teams"])
 
-@router.post("org/{org_id}/teams/create", response_model=TeamResponse)
+@router.post("/org/{org_id}/teams/create", response_model=TeamResponse)
 def create_team(org_id: UUID, 
                 request: TeamCreateRequest,
                 db: Session = Depends(get_db),

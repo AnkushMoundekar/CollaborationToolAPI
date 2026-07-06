@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.modules.tasks.repository import TaskRepository
+from app.modules.tasks.repository import TaskRepository, TaskHistoryRepository
 from app.modules.organizations.repository import OrganizationRepository, OrganizationMemberRepository
 from app.modules.users.repository import UserRepository
 from app.modules.teams.repository import TeamRepository, TeamMemberRepository
@@ -164,3 +164,12 @@ def reopen(task_id: UUID,
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/task/{task_id}/history")
+def get_task_history(task_id: UUID,
+                     db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
+        try:
+            return TaskHistoryRepository(db).get_task_history(task_id)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))

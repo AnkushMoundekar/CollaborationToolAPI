@@ -1,12 +1,13 @@
 from uuid import UUID
 from sqlalchemy.orm import Session
 
-from app.modules.tasks.repository import TaskRepository
+from app.modules.tasks.repository import TaskRepository, TaskHistoryRepository
 from app.modules.organizations.repository import OrganizationMemberRepository, OrganizationRepository
 from app.modules.users.repository import UserRepository
 from app.modules.teams.repository import TeamMemberRepository, TeamRepository
 from app.models.tasks import Task
-from app.models.enums import TaskStatus, TaskPriority, OrganizationRole
+from app.models.task_history import TaskHistory
+from app.models.enums import TaskStatus, TaskPriority, OrganizationRole, TaskHistoryActions
 
 class TaskService:
     def __init__(self, task_repository: TaskRepository,
@@ -27,6 +28,12 @@ class TaskService:
         if not membership:
             raise ValueError("user not in organization")
         
+        new_value = {
+            "title": data.title,
+            "description": data.description,
+            "status": TaskStatus.TODO,
+            "priority": TaskPriority.MEDIUM,
+        }
         try:
             task = self.task_repository.create_task(
                 Task(
@@ -36,6 +43,15 @@ class TaskService:
                     created_by = current_user_id
                 )
             )
+            TaskHistoryRepository(self.db).create(
+                TaskHistory(
+                    task_id = task.id,
+                    user_id = current_user_id,
+                    action = TaskHistoryActions.TASK_CREATED,
+                    new_value = new_value
+                )
+            )
+
             self.db.commit()
             return task
         except Exception:
@@ -80,11 +96,29 @@ class TaskAssignmentService:
         if not self.teammember_repository.get_membership(team_id=task_team, user_id=assigned_to):
             raise ValueError("User and task not in the same team")
         
+        old_value = {
+            "assigned_user_id": str(task.assigned_user_id),
+            "status": task.status
+        }
+        
         try:
             self.taskrepository.update(
                 task_id=task_id,
                 assigned_user_id=assigned_to,
                 status= TaskStatus.IN_PROGRESS
+            )
+            new_value = {
+                "assigned_user_id": str(assigned_to),
+                "status": task.status
+            }
+            TaskHistoryRepository(self.db).create(
+                TaskHistory(
+                    task_id = task.id,
+                    user_id = current_user_id,
+                    action = TaskHistoryActions.USER_ASSIGNED,
+                    old_value = old_value,
+                    new_value = new_value
+                )
             )
 
             self.db.commit()
@@ -110,11 +144,27 @@ class TaskAssignmentService:
         if team.org_id != task_org:
             raise ValueError("cannot assign task to team from different organization")
         
+        old_value = {
+            "assigned_team_id": str(task.assigned_team_id)
+        }
+        new_value = {
+            "assigned_team_id": str(team_id)
+        }
+
         try:
             self.taskrepository.update(
                 task_id = task_id,
                 assigned_team_id=team_id,
                 assigned_user_id=None
+            )
+            TaskHistoryRepository(self.db).create(
+                TaskHistory(
+                    task_id = task.id,
+                    user_id = current_user_id,
+                    action = TaskHistoryActions.TEAM_ASSIGNED,
+                    old_value = old_value,
+                    new_value = new_value
+                )
             )
 
             self.db.commit()
@@ -139,18 +189,37 @@ class TaskAssignmentService:
             raise ValueError("the task is already open")
         
         assigned_team_id = None
-
+        old_value = {
+            "status": task.status,
+            "assigned_team_id": str(task.assigned_team_id),
+            "assigned_user_id": str(task.assigned_user_id)
+        }
+        
         if task.assigned_team_id:
             team = self.team_repository.get_by_id(task.assigned_team_id)
             if team:
                 assigned_team_id = team.id
-
+        
+        new_value = {
+            "status": TaskStatus.TODO,
+            "assigned_team_id": str(assigned_team_id),
+            "assigned_user_id": None
+        }
         try:
             self.taskrepository.update(
                 task_id=task_id,
                 assigned_team_id = assigned_team_id,
                 status = TaskStatus.TODO,
                 assigned_user_id = None
+            )
+            TaskHistoryRepository(self.db).create(
+                TaskHistory(
+                    task_id = task.id,
+                    user_id = current_user_id,
+                    action = TaskHistoryActions.TEAM_ASSIGNED,
+                    old_value = old_value,
+                    new_value = new_value
+                )
             )
             self.db.commit()
         except Exception:
@@ -201,11 +270,20 @@ class TaskUpdateService:
         # status can be updated only in the allowed transition
         if status not in self.ALLOWED_TRANSITIONS[task.status]:
             raise ValueError("Invalid status tranisition")
-
+        old_value = {"status": task.status}
         try:
             self.taskrepository.update(
                 task_id=task_id,
                 status=status
+            )
+            TaskHistoryRepository(self.db).create(
+                TaskHistory(
+                    task_id = task.id,
+                    user_id = current_user_id,
+                    action = TaskHistoryActions.TEAM_ASSIGNED,
+                    old_value = old_value,
+                    new_value = {"status": status}
+                )
             )
             self.db.commit()
         except Exception:
@@ -220,19 +298,25 @@ class TaskUpdateService:
         #task priority can be changed by anyone in the organization 
         if not self.orgmember_repository.get_membership(task.org_id, current_user_id):
             raise ValueError("priority cannot be changed by user outside the organization")
-        
+        old_value = {"priority": task.priority}
         try:
             self.taskrepository.update(
                 task_id = task_id,
                 priority = priority
             )
+            TaskHistoryRepository(self.db).create(
+                TaskHistory(
+                    task_id = task.id,
+                    user_id = current_user_id,
+                    action = TaskHistoryActions.TEAM_ASSIGNED,
+                    old_value = old_value,
+                    new_value = {"priority": priority}
+                )
+            )
             self.db.commit()
         except Exception:
             self.db.rollback()
             raise
-
-
-
     
         
         

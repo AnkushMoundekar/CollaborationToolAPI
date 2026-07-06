@@ -5,3 +5,4 @@ from .teams import Team
 from .team_members import TeamMember
 from .tasks import Task
 from .refresh_token import RefreshToken
+from .task_history import TaskHistory

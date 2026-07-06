@@ -37,3 +37,5 @@ class Task(CommonBaseModel, Base):
     team = relationship("Team", back_populates="tasks")
     creator = relationship("User", foreign_keys=[created_by], back_populates="created_tasks")
     assignee = relationship("User", foreign_keys=[assigned_user_id], back_populates="assigned_tasks")
+
+    task_history = relationship("TaskHistory", back_populates="task")
